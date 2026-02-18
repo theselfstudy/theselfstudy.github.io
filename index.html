@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Self Study</title>
+  <meta name="description" content="Privacy-first tools for understanding yourself better. No accounts, no tracking, no judgment." />
+  <style>
+    :root {
+      --green: #3F592E;
+      --plumb: #4A2E59;
+      --taupe: #C4B7A6;
+      --cream: #F8F6F3;
+      --charcoal: #59572E;
+      --gray: #7A7A7A;
+      --teal: #104B55;
+      --border: #E8E4DF;
+      --white: #FFFFFF;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: var(--cream);
+      color: var(--charcoal);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      padding: 4rem 1.5rem 2rem;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      font-size: 1.125rem;
+      color: var(--gray);
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Apps Section */
+    .apps {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      flex: 1;
+    }
+
+    .apps h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .app-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .app-card {
+      background: var(--white);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      display: block;
+    }
+
+    .app-card:hover {
+      border-color: var(--green);
+      box-shadow: 0 4px 16px rgba(61, 61, 61, 0.12);
+    }
+
+    .app-card .icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .app-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--charcoal);
+      margin-bottom: 0.5rem;
+    }
+
+    .app-card p {
+      font-size: 0.875rem;
+      color: var(--gray);
+      line-height: 1.5;
+    }
+
+    .app-card .tag {
+      display: inline-block;
+      margin-top: 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: var(--cream);
+      color: var(--green);
+    }
+
+    .app-card.coming-soon {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .app-card.coming-soon .tag {
+      background: var(--border);
+      color: var(--gray);
+    }
+
+    /* Philosophy */
+    .philosophy {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 1rem;
+      text-align: center;
+    }
+
+    .philosophy h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray);
+      margin-bottom: 1.5rem;
+    }
+
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+      .principles { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .principle {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .principle .p-icon {
+      font-size: 1.25rem;
+      margin-bottom: 0.4rem;
+      display: block;
+    }
+
+    .principle strong {
+      font-size: 0.8rem;
+      display: block;
+      margin-bottom: 0.2rem;
+      color: var(--charcoal);
+    }
+
+    .principle span {
+      font-size: 0.7rem;
+      color: var(--gray);
+      line-height: 1.4;
+    }
+
+    /* Cadence Logo Animation */
+    .cadence-logo {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+
+    @keyframes colorCycle0 {
+      0% { stroke: #791D1E; }
+      25% { stroke: rgba(63, 89, 46, 0.5); }
+      50% { stroke: #104B55; }
+      75% { stroke: #C4B7A6; }
+      100% { stroke: #791D1E; }
+    }
+    @keyframes colorCycle2 {
+      0% { stroke: #104B55; }
+      25% { stroke: #C4B7A6; }
+      50% { stroke: #791D1E; }
+      75% { stroke: rgba(63, 89, 46, 0.5); }
+      100% { stroke: #104B55; }
+    }
+    @keyframes colorCycle3 {
+      0% { stroke: #C4B7A6; }
+      25% { stroke: #791D1E; }
+      50% { stroke: rgba(63, 89, 46, 0.5); }
+      75% { stroke: #104B55; }
+      100% { stroke: #C4B7A6; }
+    }
+    @keyframes fillCycle1 {
+      0% { fill: rgba(63, 89, 46, 0.5); }
+      25% { fill: #104B55; }
+      50% { fill: #C4B7A6; }
+      75% { fill: #791D1E; }
+      100% { fill: rgba(63, 89, 46, 0.5); }
+    }
+
+    .cadence-logo .outer { animation: colorCycle3 8s ease-in-out infinite; }
+    .cadence-logo .middle { animation: colorCycle2 8s ease-in-out infinite; }
+    .cadence-logo .inner { animation: colorCycle0 8s ease-in-out infinite; }
+    .cadence-logo .heart { animation: fillCycle1 8s ease-in-out infinite; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      font-size: 0.75rem;
+      color: var(--gray);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>The Self Study</h1>
+    <p>Privacy-first tools for understanding yourself better. No accounts, no tracking, no judgment.</p>
+  </header>
+
+  <section class="apps">
+    <h2>Apps</h2>
+    <div class="app-grid">
+      <a href="/cadence/" class="app-card">
+        <div class="cadence-logo">
+          <svg width="40" height="40" viewBox="0 0 100 100">
+            <path class="outer" d="M78,22 A40,40 0 1 0 78,78" stroke-width="3.75" fill="none" stroke-linecap="round" />
+            <path class="middle" d="M30,30 A28,28 0 1 1 30,70" stroke-width="3.75" fill="none" stroke-linecap="round" />
+            <path class="inner" d="M61,39 A16,16 0 1 0 61,61" stroke-width="3.75" fill="none" stroke-linecap="round" />
+            <path class="heart" d="M50,56 C50,56 44,50 44,47 C44,44 46,42 50,46 C54,42 56,44 56,47 C56,50 50,56 50,56 Z" transform="scale(0.42)" style="transform-origin: 50px 50px;" />
+          </svg>
+        </div>
+        <h3>Cadence</h3>
+        <p>A judgment-free body tracker. Log symptoms, bowel health, menstrual cycles, and medications &mdash; all stored locally on your device.</p>
+        <span class="tag">Available Now</span>
+      </a>
+
+      <div class="app-card coming-soon">
+        <span class="icon">&#128260;</span>
+        <h3>More Coming Soon</h3>
+        <p>New self-study tools are in the works. Same principles &mdash; private, simple, yours.</p>
+        <span class="tag">Coming Soon</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="philosophy">
+    <h2>Our Principles</h2>
+    <div class="principles">
+      <div class="principle">
+        <span class="p-icon">&#128274;</span>
+        <strong>Private</strong>
+        <span>Your data stays on your device</span>
+      </div>
+      <div class="principle">
+        <span class="p-icon">&#128581;</span>
+        <strong>No Accounts</strong>
+        <span>Use everything anonymously</span>
+      </div>
+      <div class="principle">
+        <span class="p-icon">&#9878;&#65039;</span>
+        <strong>No Ads</strong>
+        <span>No tracking, no analytics</span>
+      </div>
+      <div class="principle">
+        <span class="p-icon">&#128155;</span>
+        <strong>Judgment-Free</strong>
+        <span>Tools that support, never shame</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2025 The Self Study
+  </footer>
+
+</body>
+</html>
