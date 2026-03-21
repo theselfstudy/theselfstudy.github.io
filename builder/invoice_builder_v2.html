@@ -689,7 +689,7 @@
 <div class="app-header">
   <div>
     <h1 class="app-title">Invoice Builder</h1>
-    <p class="app-subtitle">Fill · Preview · Save</p>
+    <p class="app-subtitle">Fill · Preview · Save </p>
     <button class="btn-new-invoice" onclick="openNewInvoiceConfirm()" style="margin-top:.85rem">+ New Invoice</button>
   </div>
   <button class="btn-settings" onclick="openSettings()">
@@ -717,7 +717,7 @@
     <div class="owner-info-card">
       <div class="section-label">Your Business</div>
       <div class="owner-info-lines" id="ownerInfoDisplay"></div>
-      <div class="owner-info-hint">To update, contact Wanzilu :)</div>
+      <div class="owner-info-hint">To update, edit the <code style="background:var(--accent-light);color:var(--accent-dark);padding:0 .25rem;border-radius:2px">OWNER</code> constant at the top of the &lt;script&gt; block.</div>
     </div>
 
     <!-- Client Info -->
@@ -734,7 +734,10 @@
       <div class="field-row">
         <div class="field" style="flex:2">
           <label>Invoice #</label>
-          <input id="invNum" placeholder="INV-1001" oninput="render()">
+          <div style="display:flex;gap:.4rem;align-items:center">
+            <input id="invNum" placeholder="INV-1001" oninput="render()" style="flex:1">
+            <button id="btnSyncNum" title="Sync next number from sheet" onclick="syncInvoiceNumber()" style="flex-shrink:0;padding:.45rem .6rem;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);font-size:.9rem;line-height:1" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">↻</button>
+          </div>
         </div>
         <div class="field">
           <label>Currency</label>
@@ -787,7 +790,7 @@
     <div class="payment-static-card">
       <div class="section-label">Payment Methods</div>
       <div class="payment-qr-grid" id="formPaymentGrid"></div>
-      <div class="payment-info-hint">QR codes are static. To replace image paths, contact Wanzilu :)</div>
+      <div class="payment-info-hint">QR codes are static — replace image paths in the <code style="background:var(--accent-light);color:var(--accent-dark);padding:0 .25rem;border-radius:2px">PAYMENT_METHODS</code> constant in the &lt;script&gt; block.</div>
     </div>
 
     <!-- Notes -->
@@ -877,10 +880,10 @@
 // ============================================================
 
 const OWNER = {
-  name:    'A Potters Wheel Counseling',
-  email:   'apotterswheel7@gmail.com',
-  phone:   '412-447-1120',
-  address: '11524 Frankstown Road\nPittsburgh, PA 19104',
+  name:    'Your Business Name',       // e.g. 'The Self Study'
+  email:   'hello@the-self-study.com',
+  phone:   '+1 555 000 0000',
+  address: '123 Main St\nCity, State ZIP',
 };
 
 // For each payment method:
@@ -956,6 +959,29 @@ function commitNumber(num) {
 
 function formatInvNum(n) {
   return 'INV-' + String(n).padStart(4, '0');
+}
+
+async function syncInvoiceNumber() {
+  if (!isConfigured()) { showToast('Connect your Google Sheet first.', 'error'); openSettings(); return; }
+  const btn = document.getElementById('btnSyncNum');
+  btn.textContent = '…';
+  btn.disabled = true;
+  try {
+    const token = await requestToken();
+    const nextNum = await fetchNextInvoiceNumber(token);
+    if (nextNum) {
+      document.getElementById('invNum').value = nextNum;
+      render();
+      showToast(`Invoice number synced to ${nextNum}`, 'success');
+    } else {
+      showToast('No existing invoices found in sheet — keeping current number.', 'error');
+    }
+  } catch (err) {
+    showToast(err.message || 'Sync failed.', 'error');
+  } finally {
+    btn.textContent = '↻';
+    btn.disabled = false;
+  }
 }
 
 function openNewInvoiceConfirm() {
@@ -1104,6 +1130,25 @@ function getSpreadsheetId(url) {
   return m ? m[1] : null;
 }
 
+async function fetchNextInvoiceNumber(token) {
+  const c = getConfig();
+  const spreadsheetId = getSpreadsheetId(c.sheetUrl);
+  if (!spreadsheetId) return null;
+  const tab = encodeURIComponent(c.sheetTab || 'Invoices');
+  try {
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A:A`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rows = (data.values || []).slice(1); // skip header
+    const nums = rows.map(r => parseInt((r[0] || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n) && n > 0);
+    if (!nums.length) return null;
+    return formatInvNum(Math.max(...nums) + 1);
+  } catch { return null; }
+}
+
 async function appendToSheet(token, rowData) {
   const c = getConfig();
   const spreadsheetId = getSpreadsheetId(c.sheetUrl);
@@ -1210,6 +1255,12 @@ async function handleExport() {
 
   try {
     const token = await requestToken();
+    setSheetStatus('Syncing invoice number...', 'loading');
+    const nextNum = await fetchNextInvoiceNumber(token);
+    if (nextNum) {
+      document.getElementById('invNum').value = nextNum;
+      render();
+    }
     setSheetStatus('Saving invoice to sheet...', 'loading');
     await appendToSheet(token, buildSheetRow());
 
