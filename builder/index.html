@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #ffffff;
+    --cream: #faf5f8;
+    --accent: #A0667F;
+    --accent-dark: #8a5570;
+    --accent-light: #f0e5ec;
+    --secondary: #676060;
+    --muted: #8a8080;
+    --line: #e8dde4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .gate-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 6px 6px 0 var(--accent-light);
+  }
+
+  .gate-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    margin-bottom: .25rem;
+  }
+
+  .gate-subtitle {
+    font-size: .72rem;
+    color: var(--muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  .gate-label {
+    display: block;
+    font-size: .63rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--secondary);
+    margin-bottom: .4rem;
+  }
+
+  .gate-input {
+    font-family: 'DM Mono', monospace;
+    font-size: .85rem;
+    width: 100%;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .6rem .85rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color .2s;
+    margin-bottom: 1.25rem;
+  }
+  .gate-input:focus { border-color: var(--accent); }
+
+  .gate-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: var(--paper);
+    border: none;
+    border-radius: 4px;
+    padding: .75rem 1.5rem;
+    width: 100%;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .gate-btn:hover { background: var(--accent-dark); }
+
+  .gate-error {
+    font-size: .72rem;
+    color: #c0392b;
+    margin-top: .85rem;
+    min-height: 1.2em;
+    text-align: center;
+    display: none;
+  }
+  .gate-error.visible { display: block; }
+
+  .gate-footer {
+    font-size: .62rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 2rem;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="gate-card">
+  <div class="gate-title">Invoice Portal</div>
+  <div class="gate-subtitle">Restricted access</div>
+
+  <label class="gate-label" for="gatePassword">Password</label>
+  <input
+    class="gate-input"
+    id="gatePassword"
+    type="password"
+    placeholder="Enter your password"
+    autocomplete="current-password"
+    onkeydown="if(event.key==='Enter')checkPassword()"
+  >
+
+  <button class="gate-btn" onclick="checkPassword()">Continue</button>
+
+  <div class="gate-error" id="gateError">Incorrect password. Please try again.</div>
+
+  <div class="gate-footer">
+    Access is restricted to authorised users only.
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  ✏️  SET YOUR PASSWORD HASH
+//
+//  1. Open any browser console (F12 → Console)
+//  2. Run this, replacing "your-password-here" with your chosen password:
+//
+//     crypto.subtle.digest('SHA-256', new TextEncoder().encode('your-password-here'))
+//       .then(b => console.log([...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('')))
+//
+//  3. Copy the hex string it prints and paste it below.
+// ============================================================
+const PASSWORD_HASH = 'f8049e23887a7a7e58302af6121485b7701006ab7216096178d825b54c460379'; // ← paste your SHA-256 hash here
+
+// The invoice builder page to redirect to on success
+const INVOICE_URL = 'invoice_builder_v2.html';
+
+async function checkPassword() {
+  const input = document.getElementById('gatePassword').value;
+  const error = document.getElementById('gateError');
+
+  if (!input) {
+    error.textContent = 'Please enter the password.';
+    error.classList.add('visible');
+    return;
+  }
+
+  if (!PASSWORD_HASH) {
+    // No hash configured yet — developer mode, allow through
+    sessionStorage.setItem('inv_auth', '1');
+    window.location.replace(INVOICE_URL);
+    return;
+  }
+
+  const hash = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(input)
+  );
+  const hex = [...new Uint8Array(hash)]
+    .map(x => x.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (hex === PASSWORD_HASH) {
+    sessionStorage.setItem('inv_auth', '1');
+    window.location.replace(INVOICE_URL);
+  } else {
+    error.textContent = 'Incorrect password. Please try again.';
+    error.classList.add('visible');
+    document.getElementById('gatePassword').value = '';
+    document.getElementById('gatePassword').focus();
+  }
+}
+</script>
+</body>
+</html>

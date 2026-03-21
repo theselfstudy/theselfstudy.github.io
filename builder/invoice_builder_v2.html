@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #ffffff;
+    --cream: #faf5f8;
+    --accent: #A0667F;
+    --accent-dark: #8a5570;
+    --accent-light: #f0e5ec;
+    --secondary: #676060;
+    --muted: #8a8080;
+    --line: #e8dde4;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 1.5rem 2rem 2rem;
+  }
+
+  /* ── APP HEADER ── */
+  .app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    max-width: 1300px;
+    margin: 0 auto 2rem;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+  h1.app-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem;
+    letter-spacing: -1px;
+    margin-bottom: .2rem;
+    color: var(--ink);
+  }
+  .app-subtitle {
+    font-size: .72rem;
+    color: var(--muted);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  /* ── SETUP BANNER ── */
+  .setup-banner {
+    max-width: 1300px;
+    margin: 0 auto 1.5rem;
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: .75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .setup-banner p { font-size: .8rem; color: var(--secondary); }
+  .setup-banner strong { color: var(--accent); }
+
+  /* ── MAIN LAYOUT ── */
+  .app-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    body { padding: 1rem; }
+    .app-layout { grid-template-columns: 1fr; }
+    .preview-panel { position: static !important; }
+  }
+
+  /* ── FORM PANEL ── */
+  .form-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-card {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1.25rem;
+  }
+  .section-label {
+    font-size: .63rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: .9rem;
+    padding-bottom: .45rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* ── STATIC OWNER INFO DISPLAY ── */
+  .owner-info-card {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1.25rem;
+  }
+  .owner-info-card .section-label { margin-bottom: .75rem; }
+  .owner-info-lines {
+    font-size: .8rem;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  .owner-info-lines span { display: block; }
+  .owner-info-hint {
+    font-size: .62rem;
+    color: var(--muted);
+    margin-top: .7rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--line);
+    font-style: italic;
+  }
+
+  /* ── PAYMENT STATIC DISPLAY (form side) ── */
+  .payment-static-card {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1.25rem;
+  }
+  .payment-qr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .75rem;
+    margin-bottom: .8rem;
+  }
+  .payment-qr-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .45rem;
+  }
+  .payment-qr-box {
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 100px;
+    border: 2px dashed var(--line);
+    border-radius: 4px;
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .payment-qr-box img { width: 100%; height: 100%; object-fit: contain; }
+  .payment-qr-box .qr-placeholder-text {
+    font-size: .58rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.4;
+    padding: .4rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .payment-qr-label {
+    font-size: .7rem;
+    font-weight: 500;
+    color: var(--secondary);
+    text-align: center;
+  }
+  .payment-qr-handle {
+    font-size: .62rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .payment-info-hint {
+    font-size: .62rem;
+    color: var(--muted);
+    font-style: italic;
+    padding-top: .6rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .field-row { display: flex; gap: .65rem; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 140px; margin-bottom: .65rem; }
+  .field:last-child { margin-bottom: 0; }
+
+  label {
+    font-size: .63rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--secondary);
+  }
+  input, textarea, select {
+    font-family: 'DM Mono', monospace;
+    font-size: .83rem;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .45rem .7rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 58px; }
+
+  /* ── INV NUMBER ROW ── */
+  .inv-num-row { display: flex; align-items: flex-end; gap: .5rem; }
+  .inv-num-row input { flex: 1; }
+  .btn-new-invoice {
+    font-family: 'DM Mono', monospace;
+    font-size: .7rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: none;
+    border-radius: 4px;
+    padding: .45rem .8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .btn-new-invoice:hover { background: var(--accent-light); }
+
+  /* ── LINE ITEMS ── */
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table th {
+    font-size: .58rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: .35rem .4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .item-row td { padding: .3rem .2rem; vertical-align: middle; }
+  .item-row input { padding: .38rem .45rem; font-size: .78rem; }
+  .item-row .col-desc { width: 42%; }
+  .item-row .col-qty  { width: 12%; }
+  .item-row .col-rate { width: 20%; }
+  .item-row .col-amt  { width: 19%; color: var(--muted); font-size: .78rem; padding: .38rem .45rem; }
+  .item-row .col-del  { width: 7%; text-align: center; }
+
+  @media (max-width: 600px) {
+    .item-row .col-rate { width: 25%; }
+    .item-row .col-amt  { display: none; }
+    .items-table th:nth-child(4) { display: none; }
+  }
+
+  .btn-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .95rem;
+    padding: .2rem .35rem;
+    border-radius: 3px;
+    transition: color .2s, background .2s;
+    line-height: 1;
+  }
+  .btn-del:hover { color: var(--accent); background: var(--accent-light); }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: .73rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: .55rem 1rem;
+    transition: all .2s;
+  }
+  .btn-outline {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--secondary);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .totals-section {
+    margin-top: .9rem;
+    padding-top: .65rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .3rem;
+  }
+  .total-row { display: flex; gap: 1.75rem; font-size: .8rem; }
+  .total-row.grand { font-weight: 500; color: var(--accent); font-size: .9rem; border-top: 1px solid var(--line); padding-top: .35rem; margin-top: .15rem; }
+  .total-row span:first-child { color: var(--muted); }
+
+  /* ── PREVIEW PANEL ── */
+  .preview-panel {
+    position: sticky;
+    top: 1.5rem;
+    height: fit-content;
+  }
+  .preview-label {
+    font-size: .63rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .6rem;
+  }
+
+  /* ── INVOICE PREVIEW ── */
+  .invoice-preview {
+    background: var(--white);
+    border: 1px solid var(--line);
+    padding: 2.25rem;
+    font-size: .8rem;
+    line-height: 1.6;
+    box-shadow: 4px 4px 0 var(--cream);
+    border-radius: 2px;
+  }
+
+  .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.25rem; }
+  .inv-company-name { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--ink); }
+  .inv-company-detail { font-size: .7rem; color: var(--muted); margin-top: .2rem; white-space: pre-line; }
+
+  .inv-badge { text-align: right; }
+  .inv-logo-placeholder {
+    width: 90px;
+    height: 56px;
+    border: 2px dashed var(--line);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .58rem;
+    color: var(--muted);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    background: var(--cream);
+    margin-left: auto;
+    margin-bottom: .4rem;
+  }
+  .inv-logo { width: 90px; height: 56px; object-fit: contain; margin-left: auto; display: block; margin-bottom: .4rem; }
+  .inv-badge .word {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+    display: block;
+    letter-spacing: -.5px;
+  }
+  .inv-badge .meta { font-size: .68rem; color: var(--muted); }
+
+  .inv-parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+    padding: 1rem 1.1rem;
+    background: var(--cream);
+    border-radius: 4px;
+  }
+  .inv-party-label { font-size: .58rem; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); margin-bottom: .25rem; }
+  .inv-party-name { font-weight: 500; }
+  .inv-party-detail { font-size: .7rem; color: var(--muted); white-space: pre-line; }
+
+  .inv-dates { display: flex; gap: 2rem; margin-bottom: 1.6rem; font-size: .73rem; flex-wrap: wrap; }
+  .inv-date-block span { display: block; color: var(--muted); font-size: .63rem; text-transform: uppercase; letter-spacing: .1em; }
+
+  .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; }
+  .inv-table th {
+    font-size: .6rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); text-align: left; padding: .38rem .45rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .inv-table th:last-child { text-align: right; }
+  .inv-table td { padding: .5rem .45rem; border-bottom: 1px solid var(--line); font-size: .76rem; }
+  .inv-table td:last-child { text-align: right; }
+  .inv-table tr:last-child td { border-bottom: none; }
+
+  .inv-totals { text-align: right; font-size: .76rem; }
+  .inv-totals .row { display: flex; justify-content: flex-end; gap: 2.25rem; padding: .22rem 0; }
+  .inv-totals .row span:first-child { color: var(--muted); }
+  .inv-totals .grand { font-family: 'DM Serif Display', serif; font-size: 1.1rem; border-top: 2px solid var(--ink); padding-top: .35rem; margin-top: .18rem; }
+  .inv-totals .grand span:first-child { color: var(--ink); }
+
+  /* ── PAYMENT QR SECTION (preview) ── */
+  .inv-payment {
+    margin-top: 1.75rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--line);
+  }
+  .inv-payment-label {
+    font-size: .6rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: .9rem;
+  }
+  .inv-payment-methods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .inv-payment-method {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .4rem;
+    text-align: center;
+  }
+  .inv-qr-img {
+    width: 100%;
+    max-width: 100px;
+    aspect-ratio: 1;
+    object-fit: contain;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+  }
+  .inv-qr-placeholder {
+    width: 100%;
+    max-width: 100px;
+    aspect-ratio: 1;
+    border: 2px dashed var(--line);
+    border-radius: 3px;
+    background: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .55rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    text-align: center;
+    padding: .3rem;
+    line-height: 1.4;
+  }
+  .inv-payment-name {
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--secondary);
+  }
+  .inv-payment-handle {
+    font-size: .65rem;
+    color: var(--muted);
+  }
+
+  .inv-notes { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line); font-size: .7rem; color: var(--muted); }
+  .inv-notes strong { color: var(--ink); }
+
+  /* ── ACTION BUTTONS ── */
+  .btn-row { display: flex; gap: .65rem; margin-top: .75rem; flex-wrap: wrap; }
+
+  .btn-export {
+    background: var(--accent);
+    color: var(--white);
+    width: 100%;
+    padding: .85rem;
+    font-size: .78rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    transition: background .2s;
+  }
+  .btn-export:hover:not(:disabled) { background: var(--accent-dark); }
+  .btn-export:disabled { opacity: .6; cursor: not-allowed; }
+  .btn-export svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .btn-print-only {
+    background: var(--secondary);
+    color: var(--white);
+    flex: 1;
+    padding: .65rem;
+    font-size: .73rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    transition: background .2s;
+    white-space: nowrap;
+  }
+  .btn-print-only:hover { background: #4e4848; }
+
+  .sheet-status {
+    font-size: .68rem;
+    color: var(--muted);
+    margin-top: .45rem;
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .sheet-status.success { color: #3a7a4a; }
+  .sheet-status.error   { color: #c0392b; }
+  .sheet-status.loading { color: var(--accent); }
+
+  /* ── SETTINGS BUTTON ── */
+  .btn-settings {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: .5rem .75rem;
+    cursor: pointer;
+    color: var(--secondary);
+    font-size: .72rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: .06em;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .btn-settings:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-settings svg { width: 14px; height: 14px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 26, 26, .55);
+    backdrop-filter: blur(3px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 2rem;
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    margin-bottom: .35rem;
+    color: var(--ink);
+  }
+  .modal-subtitle {
+    font-size: .73rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+  .modal-section-label {
+    font-size: .63rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+    margin: 1.1rem 0 .6rem;
+    padding-bottom: .35rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .modal-field { margin-bottom: .85rem; }
+  .modal-field label {
+    display: block;
+    font-size: .63rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--secondary);
+    margin-bottom: .3rem;
+  }
+  .modal-field input {
+    width: 100%;
+    font-family: 'DM Mono', monospace;
+    font-size: .82rem;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .5rem .75rem;
+    color: var(--ink);
+    outline: none;
+  }
+  .modal-field input:focus { border-color: var(--accent); }
+  .modal-hint {
+    font-size: .68rem;
+    color: var(--muted);
+    line-height: 1.55;
+    background: var(--cream);
+    border-radius: 4px;
+    padding: .75rem .9rem;
+    margin-bottom: .8rem;
+  }
+  .modal-hint strong { color: var(--secondary); }
+  .modal-actions { display: flex; gap: .65rem; margin-top: 1.5rem; justify-content: flex-end; }
+  .btn-modal-save {
+    font-family: 'DM Mono', monospace;
+    font-size: .73rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: var(--white);
+    border: none;
+    border-radius: 4px;
+    padding: .6rem 1.2rem;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-modal-save:hover { background: var(--accent-dark); }
+  .btn-modal-cancel {
+    font-family: 'DM Mono', monospace;
+    font-size: .73rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    background: none;
+    color: var(--secondary);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .6rem 1rem;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-modal-cancel:hover { border-color: var(--secondary); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    padding: .7rem 1.25rem;
+    border-radius: 6px;
+    z-index: 200;
+    transition: transform .3s cubic-bezier(.34, 1.56, .64, 1);
+    white-space: nowrap;
+    max-width: calc(100vw - 2rem);
+    text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: #3a7a4a; }
+  .toast.error   { background: #c0392b; }
+
+  /* ── SPINNER ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin .8s linear infinite; display: inline-block; }
+
+  /* ── PRINT STYLES ── */
+  @media print {
+    @page { margin: 0; } /* removes browser-added date/title/URL headers and footers */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; padding: 0; }
+    .form-panel, .preview-label, .btn-row, .app-header, .setup-banner, .modal-overlay, .toast { display: none !important; }
+    .app-layout { display: block; }
+    .preview-panel { position: static; }
+    .invoice-preview { border: none; box-shadow: none; padding: 1.5cm 2cm; }
+    .inv-badge .word { color: #A0667F; }
+    .inv-party-label, .inv-payment-label { color: #A0667F; }
+    .inv-parties { background: #faf5f8; }
+    .inv-totals .grand { border-top: 2px solid #1a1a1a; }
+    .inv-table th { border-bottom: 2px solid #1a1a1a; }
+    .inv-table td { border-bottom: 1px solid #e8dde4; }
+    .inv-qr-placeholder { border-color: #e8dde4; background: #faf5f8; color: #8a8080; }
+  }
+</style>
+</head>
+<body>
+
+<!-- App Header -->
+<div class="app-header">
+  <div>
+    <h1 class="app-title">Invoice Builder</h1>
+    <p class="app-subtitle">Fill in the form · Preview updates live · Save to Sheets &amp; print</p>
+  </div>
+  <button class="btn-settings" onclick="openSettings()">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+    Google Sheets Setup
+  </button>
+</div>
+
+<!-- Setup Banner (shown when sheet URL not configured) -->
+<div class="setup-banner" id="setupBanner" style="display:none">
+  <p><strong>Google Sheet not connected.</strong> Click "Google Sheets Setup" to enter your Sheet URL — invoices will be saved there automatically on export.</p>
+  <button class="btn btn-outline" style="font-size:.7rem;padding:.45rem .85rem;white-space:nowrap" onclick="openSettings()">Connect sheet</button>
+</div>
+
+<div class="app-layout">
+
+  <!-- ══ FORM PANEL ══ -->
+  <div class="form-panel">
+
+    <!-- Static Owner Info (edit OWNER constant in the <script> block) -->
+    <div class="owner-info-card">
+      <div class="section-label">Your Business</div>
+      <div class="owner-info-lines" id="ownerInfoDisplay"></div>
+      <div class="owner-info-hint">To update, edit the <code style="background:var(--accent-light);color:var(--accent-dark);padding:0 .25rem;border-radius:2px">OWNER</code> constant at the top of the &lt;script&gt; block.</div>
+    </div>
+
+    <!-- Client Info -->
+    <div class="section-card">
+      <div class="section-label">Bill To (Client)</div>
+      <div class="field"><label>Client Name / Company</label><input id="clientName" placeholder="Jane Smith" oninput="render()"></div>
+      <div class="field"><label>Client Email</label><input id="clientEmail" placeholder="jane@client.com" type="email" oninput="render()"></div>
+      <div class="field"><label>Client Address</label><textarea id="clientAddress" rows="2" placeholder="456 Oak Ave, City, State ZIP" oninput="render()"></textarea></div>
+    </div>
+
+    <!-- Invoice Details -->
+    <div class="section-card">
+      <div class="section-label">Invoice Details</div>
+      <div class="field-row">
+        <div class="field" style="flex:2">
+          <label>Invoice #</label>
+          <div class="inv-num-row">
+            <input id="invNum" placeholder="INV-1001" oninput="render()">
+            <button class="btn-new-invoice" onclick="openNewInvoiceConfirm()">+ New Invoice</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <select id="currency" onchange="render()">
+            <option value="$">USD ($)</option>
+            <option value="€">EUR (€)</option>
+            <option value="£">GBP (£)</option>
+            <option value="¥">JPY (¥)</option>
+            <option value="C$">CAD (C$)</option>
+            <option value="A$">AUD (A$)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Issue Date</label><input id="issueDate" type="date" oninput="render()"></div>
+        <div class="field"><label>Due Date</label><input id="dueDate" type="date" oninput="render()"></div>
+      </div>
+    </div>
+
+    <!-- Line Items -->
+    <div class="section-card">
+      <div class="section-label">Services / Items</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th class="col-desc">Description</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-rate">Rate</th>
+            <th class="col-amt">Amount</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+      <div style="margin-top:.7rem; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:.5rem;">
+        <button class="btn btn-outline" onclick="addItem()">+ Add Line</button>
+        <div class="totals-section">
+          <div class="total-row"><span>Subtotal</span><span id="subtotalDisplay">—</span></div>
+          <div class="total-row">
+            <span>Tax %</span>
+            <input id="taxRate" type="number" min="0" max="100" step="0.1" value="0"
+              style="width:68px;text-align:right;margin:0" oninput="render()">
+          </div>
+          <div class="total-row grand"><span>Total</span><span id="totalDisplay">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Methods (static, from PAYMENT_METHODS config) -->
+    <div class="payment-static-card">
+      <div class="section-label">Payment Methods</div>
+      <div class="payment-qr-grid" id="formPaymentGrid"></div>
+      <div class="payment-info-hint">QR codes are static — replace image paths in the <code style="background:var(--accent-light);color:var(--accent-dark);padding:0 .25rem;border-radius:2px">PAYMENT_METHODS</code> constant in the &lt;script&gt; block.</div>
+    </div>
+
+    <!-- Notes -->
+    <div class="section-card">
+      <div class="section-label">Notes</div>
+      <div class="field" style="margin-bottom:0">
+        <label>Notes (optional)</label>
+        <textarea id="notes" rows="2" placeholder="Thank you for your business!" oninput="render()"></textarea>
+      </div>
+    </div>
+
+  </div><!-- /form-panel -->
+
+  <!-- ══ PREVIEW PANEL ══ -->
+  <div class="preview-panel">
+    <div class="preview-label">Live Preview</div>
+    <div class="invoice-preview" id="invoicePreview"></div>
+
+    <div class="btn-row">
+      <button class="btn-export" id="btnExport" onclick="handleExport()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <span id="exportBtnText">Save to Google Sheets &amp; Print</span>
+      </button>
+    </div>
+    <div class="btn-row" style="margin-top:.4rem">
+      <button class="btn-print-only" onclick="printInvoice()">Print / Save PDF only</button>
+    </div>
+    <div class="sheet-status" id="sheetStatus"></div>
+  </div>
+
+</div><!-- /app-layout -->
+
+<!-- ══ NEW INVOICE CONFIRM MODAL ══ -->
+<div class="modal-overlay" id="newInvoiceModal" onclick="handleNewInvoiceOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+    <div class="modal-title">Save Before Continuing?</div>
+    <p class="modal-subtitle" style="margin-bottom:1.25rem">Please make sure the current invoice has been saved to your Google Sheet and as a PDF before starting a new one. <b>This action will clear the form.</b></p>
+    <p style="font-size:.72rem;color:var(--muted);line-height:1.55">If you've already exported or don't need to save this one, you're good to go.</p>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button class="btn-modal-cancel" onclick="closeNewInvoiceConfirm()">Go Back</button>
+      <button class="btn-modal-save" onclick="confirmNewInvoice()">Yes, Start New Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div class="modal-overlay" id="settingsModal" onclick="handleOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">Google Sheets Setup</div>
+    <p class="modal-subtitle">Please connect your preferred Google Sheet to save the invoice information to a new row.</p>
+
+    <div class="modal-section-label">Google Sheet</div>
+    <div class="modal-field">
+      <label>Sheet URL</label>
+      <input id="settingSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." type="url">
+    </div>
+    <div class="modal-field">
+      <label>Sheet Tab Name (default: Invoices)</label>
+      <input id="settingSheetTab" placeholder="Invoices" type="text">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="btn-modal-save" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  ✏️  EDIT THESE — your static business details
+// ============================================================
+
+const OWNER = {
+  name:    'Your Business Name',       // e.g. 'The Self Study'
+  email:   'hello@the-self-study.com',
+  phone:   '+1 555 000 0000',
+  address: '123 Main St\nCity, State ZIP',
+};
+
+// For each payment method:
+//   label  — displayed name (e.g. 'PayPal')
+//   image  — relative path to the QR PNG once you have it (e.g. 'qr-paypal.png')
+//            Leave as '' to show a placeholder until you have the file.
+//   handle — username or address shown under the QR code
+const PAYMENT_METHODS = [
+  { label: 'PayPal',   image: '', handle: '@yourusername' },
+  { label: 'CashApp',  image: '', handle: '$yourcashtag'  },
+  { label: 'Zelle',    image: '', handle: 'hello@the-self-study.com' },
+];
+
+// ============================================================
+//  OAuth Client ID (base64-encoded — not a secret, just not plaintext)
+// ============================================================
+const HARDCODED_CLIENT_ID = atob(
+  'NzM1NDY3NjQyMi05Nmc3OGU2dGRmYjJqcDFha2lnc2I4MGo5Njk2MzM5Yy5h' +
+  'cHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ=='
+);
+
+// ============================================================
+//  STATE
+// ============================================================
+
+let items = [{ desc: '', qty: 1, rate: '' }];
+let tokenClient = null;
+let exportInProgress = false;
+
+// ============================================================
+//  CONFIG (localStorage — only stores sheetUrl + sheetTab)
+// ============================================================
+
+function getConfig() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('invoice_config') || '{}');
+    // Always use hardcoded client ID unless the user has explicitly overridden it
+    return {
+      clientId: HARDCODED_CLIENT_ID,
+      sheetTab: 'Invoices',
+      ...stored,
+    };
+  } catch { return { clientId: HARDCODED_CLIENT_ID, sheetTab: 'Invoices' }; }
+}
+
+function saveConfig(patch) {
+  const c = getConfig();
+  localStorage.setItem('invoice_config', JSON.stringify({ ...c, ...patch }));
+}
+
+function isConfigured() {
+  return !!getConfig().sheetUrl;
+}
+
+// ============================================================
+//  INVOICE NUMBER (auto-incrementing, persisted)
+// ============================================================
+
+function getNextNumber() {
+  return parseInt(localStorage.getItem('invoice_next_num') || '1001', 10);
+}
+
+function commitNumber(num) {
+  localStorage.setItem('invoice_next_num', String(num + 1));
+}
+
+function formatInvNum(n) {
+  return 'INV-' + String(n).padStart(4, '0');
+}
+
+function openNewInvoiceConfirm() {
+  document.getElementById('newInvoiceModal').classList.add('open');
+}
+
+function closeNewInvoiceConfirm() {
+  document.getElementById('newInvoiceModal').classList.remove('open');
+}
+
+function handleNewInvoiceOverlayClick(e) {
+  if (e.target === document.getElementById('newInvoiceModal')) closeNewInvoiceConfirm();
+}
+
+function confirmNewInvoice() {
+  closeNewInvoiceConfirm();
+  newInvoice();
+}
+
+function newInvoice() {
+  const next = getNextNumber();
+  document.getElementById('invNum').value = formatInvNum(next);
+  document.getElementById('clientName').value = '';
+  document.getElementById('clientEmail').value = '';
+  document.getElementById('clientAddress').value = '';
+  const today = new Date().toISOString().split('T')[0];
+  const due = new Date(); due.setDate(due.getDate() + 30);
+  document.getElementById('issueDate').value = today;
+  document.getElementById('dueDate').value = due.toISOString().split('T')[0];
+  document.getElementById('notes').value = '';
+  document.getElementById('taxRate').value = '0';
+  items = [{ desc: '', qty: 1, rate: '' }];
+  setSheetStatus('');
+  renderItems();
+  render();
+}
+
+// ============================================================
+//  SETTINGS MODAL
+// ============================================================
+
+function openSettings() {
+  const c = getConfig();
+  document.getElementById('settingSheetUrl').value = c.sheetUrl || '';
+  document.getElementById('settingSheetTab').value = c.sheetTab || '';
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('settingsModal')) closeSettings();
+}
+
+function saveSettings() {
+  const sheetUrl = document.getElementById('settingSheetUrl').value.trim();
+  const sheetTab = document.getElementById('settingSheetTab').value.trim() || 'Invoices';
+
+  if (!sheetUrl) {
+    showToast('Please enter your Google Sheet URL.', 'error');
+    return;
+  }
+  if (!sheetUrl.includes('docs.google.com/spreadsheets')) {
+    showToast('That doesn\'t look like a valid Google Sheet URL.', 'error');
+    return;
+  }
+
+  saveConfig({ sheetUrl, sheetTab });
+  initGIS();
+  updateSetupBanner();
+  closeSettings();
+  showToast('Settings saved!', 'success');
+}
+
+// ============================================================
+//  GOOGLE IDENTITY SERVICES
+// ============================================================
+
+function initGIS() {
+  const c = getConfig();
+  if (!c.clientId || !window.google?.accounts?.oauth2) return;
+
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: c.clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: onOAuthToken,
+  });
+}
+
+function waitForGIS() {
+  if (window.google?.accounts?.oauth2) {
+    initGIS();
+  } else {
+    setTimeout(waitForGIS, 200);
+  }
+}
+
+let _resolveToken = null;
+let _rejectToken = null;
+
+function requestToken() {
+  return new Promise((resolve, reject) => {
+    if (!tokenClient) {
+      reject(new Error('Google Sheets not set up yet. Click "Google Sheets Setup" first.'));
+      return;
+    }
+    _resolveToken = resolve;
+    _rejectToken = reject;
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+function onOAuthToken(response) {
+  if (response.error) {
+    if (_rejectToken) _rejectToken(new Error('Google sign-in cancelled or failed.'));
+    _resolveToken = null;
+    _rejectToken = null;
+    return;
+  }
+  if (_resolveToken) _resolveToken(response.access_token);
+  _resolveToken = null;
+  _rejectToken = null;
+}
+
+// ============================================================
+//  GOOGLE SHEETS API
+// ============================================================
+
+function getSpreadsheetId(url) {
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : null;
+}
+
+async function appendToSheet(token, rowData) {
+  const c = getConfig();
+  const spreadsheetId = getSpreadsheetId(c.sheetUrl);
+  const tab = encodeURIComponent(c.sheetTab || 'Invoices');
+
+  if (!spreadsheetId) throw new Error('Invalid Google Sheet URL in settings.');
+
+  const checkRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A1:A1`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!checkRes.ok) {
+    if (checkRes.status === 404) {
+      throw new Error(`Sheet tab "${c.sheetTab || 'Invoices'}" not found. Create it in your spreadsheet first.`);
+    }
+    const err = await checkRes.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Sheets API error (${checkRes.status})`);
+  }
+
+  const checkData = await checkRes.json();
+  const isEmpty = !checkData.values || checkData.values.length === 0;
+
+  const headers = [
+    'Invoice #', 'Issue Date', 'Due Date',
+    'Client Name', 'Client Email', 'Client Address',
+    'Business', 'Business Email', 'Business Phone', 'Business Address',
+    'Currency', 'Line Items', 'Subtotal', 'Tax %', 'Tax Amount', 'Total Due',
+    'Notes', 'Submitted At',
+  ];
+
+  const values = isEmpty ? [headers, rowData] : [rowData];
+
+  const appendRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values }),
+    }
+  );
+
+  if (!appendRes.ok) {
+    if (appendRes.status === 403) throw new Error('Permission denied. Make sure your Google account has edit access to the sheet.');
+    const err = await appendRes.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Failed to write to sheet (${appendRes.status})`);
+  }
+}
+
+function buildSheetRow() {
+  const sym = gv('currency') || '$';
+  const taxRate = parseFloat(document.getElementById('taxRate')?.value) || 0;
+  let subtotal = 0;
+  items.forEach(it => { subtotal += (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0); });
+  const tax = subtotal * taxRate / 100;
+  const total = subtotal + tax;
+
+  const lineItemsStr = items
+    .filter(it => it.desc || it.rate)
+    .map(it => {
+      const amt = (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
+      return `${it.desc || '—'} | Qty: ${it.qty} | Rate: ${fmt(parseFloat(it.rate) || 0, sym)} | ${fmt(amt, sym)}`;
+    })
+    .join('; ');
+
+  return [
+    gv('invNum') || 'INV-???',
+    gv('issueDate'),
+    gv('dueDate'),
+    gv('clientName'),
+    gv('clientEmail'),
+    gv('clientAddress'),
+    OWNER.name,
+    OWNER.email,
+    OWNER.phone,
+    OWNER.address.replace(/\n/g, ', '),
+    sym,
+    lineItemsStr,
+    subtotal.toFixed(2),
+    taxRate,
+    tax.toFixed(2),
+    total.toFixed(2),
+    gv('notes'),
+    new Date().toISOString(),
+  ];
+}
+
+// ============================================================
+//  EXPORT HANDLER
+// ============================================================
+
+async function handleExport() {
+  if (exportInProgress) return;
+
+  if (!gv('clientName') && !gv('invNum')) {
+    showToast('Add at least a client name or invoice number before exporting.', 'error');
+    return;
+  }
+
+  if (!isConfigured()) {
+    showToast('Connect your Google Sheet first.', 'error');
+    openSettings();
+    return;
+  }
+
+  exportInProgress = true;
+  setExportButtonState(true);
+  setSheetStatus('Connecting to Google...', 'loading');
+
+  try {
+    const token = await requestToken();
+    setSheetStatus('Saving invoice to sheet...', 'loading');
+    await appendToSheet(token, buildSheetRow());
+
+    const currentNum = parseInt((gv('invNum') || 'INV-1001').replace(/\D/g, ''), 10) || getNextNumber();
+    commitNumber(currentNum);
+
+    setSheetStatus('Saved to Google Sheets ✓', 'success');
+    showToast('Saved! Opening print dialog...', 'success');
+    setTimeout(() => { printInvoice(); }, 600);
+  } catch (err) {
+    console.error('Export error:', err);
+    setSheetStatus(err.message || 'Something went wrong.', 'error');
+    showToast(err.message || 'Export failed. Check console for details.', 'error');
+  } finally {
+    exportInProgress = false;
+    setExportButtonState(false);
+  }
+}
+
+function setExportButtonState(loading) {
+  const btn = document.getElementById('btnExport');
+  const txt = document.getElementById('exportBtnText');
+  btn.disabled = loading;
+  txt.innerHTML = loading
+    ? '<span class="spin">↻</span> Saving…'
+    : 'Save to Google Sheets &amp; Print';
+}
+
+function setSheetStatus(msg, type = '') {
+  const el = document.getElementById('sheetStatus');
+  el.textContent = msg;
+  el.className = 'sheet-status' + (type ? ' ' + type : '');
+}
+
+// ============================================================
+//  SETUP BANNER
+// ============================================================
+
+function updateSetupBanner() {
+  document.getElementById('setupBanner').style.display = isConfigured() ? 'none' : 'flex';
+}
+
+// ============================================================
+//  FORM HELPERS
+// ============================================================
+
+function addItem() {
+  items.push({ desc: '', qty: 1, rate: '' });
+  renderItems();
+  render();
+}
+
+function removeItem(i) {
+  items.splice(i, 1);
+  if (items.length === 0) items.push({ desc: '', qty: 1, rate: '' });
+  renderItems();
+  render();
+}
+
+function renderItems() {
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = items.map((it, i) => `
+    <tr class="item-row">
+      <td class="col-desc"><input value="${esc(it.desc)}" placeholder="Design, copywriting…"
+        oninput="items[${i}].desc=this.value;render()"></td>
+      <td class="col-qty"><input type="number" min="0" step="any" value="${it.qty}"
+        oninput="items[${i}].qty=parseFloat(this.value)||0;render()"></td>
+      <td class="col-rate"><input type="number" min="0" step="any" value="${it.rate}" placeholder="0.00"
+        oninput="items[${i}].rate=parseFloat(this.value)||0;render()"></td>
+      <td class="col-amt" id="amt-${i}">—</td>
+      <td class="col-del"><button class="btn-del" onclick="removeItem(${i})">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function fmt(n, sym) {
+  return sym + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function gv(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// ============================================================
+//  RENDER STATIC OWNER INFO (form side)
+// ============================================================
+
+function renderOwnerInfo() {
+  const el = document.getElementById('ownerInfoDisplay');
+  const lines = [OWNER.name, OWNER.email, OWNER.phone, OWNER.address]
+    .filter(Boolean)
+    .join('\n')
+    .split('\n');
+  el.innerHTML = lines.map(l => `<span>${esc(l)}</span>`).join('');
+}
+
+// ============================================================
+//  RENDER PAYMENT GRID (form side)
+// ============================================================
+
+function renderFormPaymentGrid() {
+  const grid = document.getElementById('formPaymentGrid');
+  grid.innerHTML = PAYMENT_METHODS.map(m => `
+    <div class="payment-qr-item">
+      <div class="payment-qr-box">
+        ${m.image
+          ? `<img src="${esc(m.image)}" alt="${esc(m.label)} QR code">`
+          : `<div class="qr-placeholder-text">QR code<br>${esc(m.label)}</div>`}
+      </div>
+      <div class="payment-qr-label">${esc(m.label)}</div>
+      <div class="payment-qr-handle">${esc(m.handle)}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+//  RENDER INVOICE PREVIEW
+// ============================================================
+
+function render() {
+  const sym = gv('currency') || '$';
+  const taxRate = parseFloat(document.getElementById('taxRate')?.value) || 0;
+
+  let subtotal = 0;
+  items.forEach((it, i) => {
+    const amt = (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
+    subtotal += amt;
+    const el = document.getElementById(`amt-${i}`);
+    if (el) el.textContent = fmt(amt, sym);
+  });
+  const tax = subtotal * taxRate / 100;
+  const total = subtotal + tax;
+  document.getElementById('subtotalDisplay').textContent = fmt(subtotal, sym);
+  document.getElementById('totalDisplay').textContent   = fmt(total, sym);
+
+  // Owner detail string
+  const ownerDetail = [OWNER.email, OWNER.phone, OWNER.address].filter(Boolean).join('\n');
+
+  const clientName   = gv('clientName')   || 'Client Name';
+  const clientEmail  = gv('clientEmail');
+  const clientAddr   = gv('clientAddress');
+  const clientDetail = [clientEmail, clientAddr].filter(Boolean).join('\n');
+
+  const invNum    = gv('invNum') || formatInvNum(getNextNumber());
+  const issueDate = gv('issueDate')
+    ? new Date(gv('issueDate') + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—';
+  const dueDate = gv('dueDate')
+    ? new Date(gv('dueDate') + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—';
+  const notes = gv('notes');
+
+  const rows = items.map(it => {
+    const amt = (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
+    return `<tr>
+      <td>${it.desc ? esc(it.desc) : '<span style="color:#ccc">—</span>'}</td>
+      <td style="text-align:center">${it.qty}</td>
+      <td style="text-align:right">${fmt(parseFloat(it.rate) || 0, sym)}</td>
+      <td>${fmt(amt, sym)}</td>
+    </tr>`;
+  }).join('');
+
+  const taxRow = taxRate > 0
+    ? `<div class="row"><span>Tax (${taxRate}%)</span><span>${fmt(tax, sym)}</span></div>`
+    : '';
+
+  // Payment methods section
+  const paymentMethodsHtml = PAYMENT_METHODS.map(m => `
+    <div class="inv-payment-method">
+      ${m.image
+        ? `<img class="inv-qr-img" src="${esc(m.image)}" alt="${esc(m.label)} QR code">`
+        : `<div class="inv-qr-placeholder">QR code<br>${esc(m.label)}</div>`}
+      <div class="inv-payment-name">${esc(m.label)}</div>
+      <div class="inv-payment-handle">${esc(m.handle)}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('invoicePreview').innerHTML = `
+    <div class="inv-header">
+      <div>
+        <div class="inv-company-name">${esc(OWNER.name)}</div>
+        <div class="inv-company-detail">${esc(ownerDetail)}</div>
+      </div>
+      <div class="inv-badge">
+        <div class="inv-logo-placeholder">Your Logo</div>
+        <span class="word">Invoice</span>
+        <div class="meta"># ${esc(invNum)}</div>
+      </div>
+    </div>
+
+    <div class="inv-parties">
+      <div>
+        <div class="inv-party-label">From</div>
+        <div class="inv-party-name">${esc(OWNER.name)}</div>
+        <div class="inv-party-detail">${esc(ownerDetail)}</div>
+      </div>
+      <div>
+        <div class="inv-party-label">Bill To</div>
+        <div class="inv-party-name">${esc(clientName)}</div>
+        <div class="inv-party-detail">${esc(clientDetail)}</div>
+      </div>
+    </div>
+
+    <div class="inv-dates">
+      <div class="inv-date-block"><span>Issue Date</span>${issueDate}</div>
+      <div class="inv-date-block"><span>Due Date</span>${dueDate}</div>
+    </div>
+
+    <table class="inv-table">
+      <thead>
+        <tr>
+          <th style="width:45%">Description</th>
+          <th style="width:10%;text-align:center">Qty</th>
+          <th style="width:20%;text-align:right">Rate</th>
+          <th style="width:25%;text-align:right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="inv-totals">
+      <div class="row"><span>Subtotal</span><span>${fmt(subtotal, sym)}</span></div>
+      ${taxRow}
+      <div class="row grand"><span>Total Due</span><span>${fmt(total, sym)}</span></div>
+    </div>
+
+    <div class="inv-payment">
+      <div class="inv-payment-label">Payment Methods</div>
+      <div class="inv-payment-methods">
+        ${paymentMethodsHtml}
+      </div>
+    </div>
+
+    ${notes ? `<div class="inv-notes"><strong>Note:</strong> ${esc(notes)}</div>` : ''}
+  `;
+}
+
+// ============================================================
+//  PRINT (sets page title so browser uses invoice number as PDF filename)
+// ============================================================
+
+function printInvoice() {
+  const original = document.title;
+  document.title = gv('invNum') || 'Invoice';
+  window.print();
+  document.title = original;
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+
+let toastTimer = null;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 4000);
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+
+// Auth gate — redirect to gate page if not authenticated this session
+if (!sessionStorage.getItem('inv_auth')) {
+  window.location.replace('index.html');
+}
+
+waitForGIS();
+
+// Default dates
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('issueDate').value = today;
+const due = new Date(); due.setDate(due.getDate() + 30);
+document.getElementById('dueDate').value = due.toISOString().split('T')[0];
+
+// Auto-fill invoice number
+document.getElementById('invNum').value = formatInvNum(getNextNumber());
+
+// Render static sections and initial preview
+renderOwnerInfo();
+renderFormPaymentGrid();
+renderItems();
+render();
+updateSetupBanner();
+</script>
+</body>
+</html>
