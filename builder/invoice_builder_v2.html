@@ -838,6 +838,18 @@
   </div>
 </div>
 
+<!-- ══ POST-EXPORT MODAL ══ -->
+<div class="modal-overlay" id="postExportModal">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+    <div class="modal-title">Invoice Saved!</div>
+    <p class="modal-subtitle" style="margin-bottom:1.25rem">The invoice has been recorded in your Google Sheet. Would you like to clear the form and move on to the next invoice?</p>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button class="btn-modal-cancel" onclick="closePostExportModal()">Stay Here</button>
+      <button class="btn-modal-save" onclick="startNextInvoice()">Start Next Invoice</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ SETTINGS MODAL ══ -->
 <div class="modal-overlay" id="settingsModal" onclick="handleOverlayClick(event)">
   <div class="modal" onclick="event.stopPropagation()">
@@ -920,8 +932,15 @@ function getConfig() {
 }
 
 function saveConfig(patch) {
-  const c = getConfig();
-  localStorage.setItem('invoice_config', JSON.stringify({ ...c, ...patch }));
+  // Only ever persist sheetUrl and sheetTab — never the clientId
+  try {
+    const stored = JSON.parse(localStorage.getItem('invoice_config') || '{}');
+    const next = { sheetUrl: stored.sheetUrl, sheetTab: stored.sheetTab, ...patch };
+    localStorage.setItem('invoice_config', JSON.stringify({
+      sheetUrl: next.sheetUrl,
+      sheetTab: next.sheetTab,
+    }));
+  } catch { localStorage.setItem('invoice_config', JSON.stringify(patch)); }
 }
 
 function isConfigured() {
@@ -959,6 +978,19 @@ function handleNewInvoiceOverlayClick(e) {
 function confirmNewInvoice() {
   closeNewInvoiceConfirm();
   newInvoice();
+}
+
+function openPostExportModal() {
+  document.getElementById('postExportModal').classList.add('open');
+}
+
+function closePostExportModal() {
+  document.getElementById('postExportModal').classList.remove('open');
+}
+
+function startNextInvoice() {
+  closePostExportModal();
+  newInvoice(); // shows next number (already committed by export), clears form
 }
 
 function newInvoice() {
@@ -1103,7 +1135,6 @@ async function appendToSheet(token, rowData) {
   const headers = [
     'Invoice #', 'Issue Date', 'Due Date',
     'Client Name', 'Client Email', 'Client Address',
-    'Business', 'Business Email', 'Business Phone', 'Business Address',
     'Currency', 'Line Items', 'Subtotal', 'Tax %', 'Tax Amount', 'Total Due',
     'Notes', 'Submitted At',
   ];
@@ -1149,10 +1180,6 @@ function buildSheetRow() {
     gv('clientName'),
     gv('clientEmail'),
     gv('clientAddress'),
-    OWNER.name,
-    OWNER.email,
-    OWNER.phone,
-    OWNER.address.replace(/\n/g, ', '),
     sym,
     lineItemsStr,
     subtotal.toFixed(2),
@@ -1196,7 +1223,7 @@ async function handleExport() {
 
     setSheetStatus('Saved to Google Sheets ✓', 'success');
     showToast('Saved! Opening print dialog...', 'success');
-    setTimeout(() => { printInvoice(); }, 600);
+    setTimeout(() => { printInvoice(); openPostExportModal(); }, 600);
   } catch (err) {
     console.error('Export error:', err);
     setSheetStatus(err.message || 'Something went wrong.', 'error');
