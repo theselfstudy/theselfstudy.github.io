@@ -141,9 +141,12 @@
   }
   .payment-qr-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: .75rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
     margin-bottom: .8rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
   }
   .payment-qr-item {
     display: flex;
@@ -411,8 +414,11 @@
   }
   .inv-payment-methods {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
   }
   .inv-payment-method {
     display: flex;
@@ -893,12 +899,11 @@ const OWNER = {
 };
 
 // For each payment method:
-//   label  — displayed name (e.g. 'PayPal')
-//   image  — relative path to the QR PNG once you have it (e.g. 'qr-paypal.png')
+//   label  — displayed name (e.g. 'CashApp')
+//   image  — relative path to the QR PNG once you have it (e.g. 'qr-cashapp.png')
 //            Leave as '' to show a placeholder until you have the file.
 //   handle — username or address shown under the QR code
 const PAYMENT_METHODS = [
-  { label: 'PayPal',   image: '', handle: '@yourusername' },
   { label: 'CashApp',  image: '', handle: '$yourcashtag'  },
   { label: 'Zelle',    image: '', handle: 'hello@the-self-study.com' },
 ];
@@ -992,30 +997,36 @@ async function syncInvoiceNumber() {
 
 // ── CLIENT AUTOCOMPLETE ──
 let clientsCache = null;
+let _clientsCachePromise = null;
 
 async function loadClientsCache() {
   if (clientsCache !== null) return;
+  if (_clientsCachePromise) return _clientsCachePromise;
   if (!isConfigured()) return;
   const c = getConfig();
   const spreadsheetId = getSpreadsheetId(c.sheetUrl);
   if (!spreadsheetId) return;
-  try {
-    const token = await requestToken();
-    const tab = encodeURIComponent('Clients');
-    const res = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A:D`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) { clientsCache = []; return; }
-    const data = await res.json();
-    const rows = (data.values || []).slice(1); // skip header row
-    clientsCache = rows.map(r => ({
-      name:    (r[0] || '').trim(),
-      phone:   (r[1] || '').trim(),
-      email:   (r[2] || '').trim(),
-      address: (r[3] || '').trim(),
-    })).filter(c => c.name);
-  } catch { clientsCache = []; }
+  _clientsCachePromise = (async () => {
+    try {
+      const token = await requestToken();
+      const tab = encodeURIComponent('Clients');
+      const res = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A:D`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) { clientsCache = []; return; }
+      const data = await res.json();
+      const rows = (data.values || []).slice(1); // skip header row
+      clientsCache = rows.map(r => ({
+        name:    (r[0] || '').trim(),
+        phone:   (r[1] || '').trim(),
+        email:   (r[2] || '').trim(),
+        address: (r[3] || '').trim(),
+      })).filter(c => c.name);
+    } catch { clientsCache = []; }
+    finally { _clientsCachePromise = null; }
+  })();
+  return _clientsCachePromise;
 }
 
 function onClientNameInput() {
@@ -1144,8 +1155,10 @@ function saveSettings() {
   initGIS();
   updateSetupBanner();
   clientsCache = null;
+  _clientsCachePromise = null;
   _cachedToken = null;
   _tokenExpiry = 0;
+  _tokenPromise = null;
   closeSettings();
   showToast('Settings saved!', 'success');
 }
@@ -1177,25 +1190,28 @@ let _resolveToken = null;
 let _rejectToken = null;
 let _cachedToken = null;
 let _tokenExpiry = 0;
+let _tokenPromise = null;
 
 function requestToken() {
-  return new Promise((resolve, reject) => {
-    if (!tokenClient) {
-      reject(new Error('Google Sheets not set up yet. Click "Google Sheets Setup" first.'));
-      return;
-    }
-    // Reuse cached token if still valid (with 60s buffer)
-    if (_cachedToken && Date.now() < _tokenExpiry - 60_000) {
-      resolve(_cachedToken);
-      return;
-    }
+  if (!tokenClient) {
+    return Promise.reject(new Error('Google Sheets not set up yet. Click "Google Sheets Setup" first.'));
+  }
+  // Reuse cached token if still valid (with 60s buffer)
+  if (_cachedToken && Date.now() < _tokenExpiry - 60_000) {
+    return Promise.resolve(_cachedToken);
+  }
+  // If a request is already in flight, return the same promise
+  if (_tokenPromise) return _tokenPromise;
+  _tokenPromise = new Promise((resolve, reject) => {
     _resolveToken = resolve;
     _rejectToken = reject;
     tokenClient.requestAccessToken({ prompt: '' });
   });
+  return _tokenPromise;
 }
 
 function onOAuthToken(response) {
+  _tokenPromise = null;
   if (response.error) {
     if (_rejectToken) _rejectToken(new Error('Google sign-in cancelled or failed.'));
     _resolveToken = null;
