@@ -1103,6 +1103,7 @@ function newInvoice() {
   document.getElementById('taxRate').value = '0';
   items = [{ desc: '', qty: 1, rate: '' }];
   setSheetStatus('');
+  clientsCache = null; // force re-fetch on next Client Name focus
   renderItems();
   render();
 }
