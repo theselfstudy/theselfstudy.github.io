@@ -726,7 +726,7 @@
       <div class="section-label">Bill To (Client)</div>
       <div class="field" style="position:relative">
         <label>Client Name / Company</label>
-        <input id="clientName" placeholder="Jane Smith" oninput="onClientNameInput()" autocomplete="off">
+        <input id="clientName" placeholder="Jane Smith" oninput="onClientNameInput()" onfocus="loadClientsCache()" autocomplete="off">
         <div id="clientSuggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--white);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:180px;overflow-y:auto;margin-top:2px"></div>
       </div>
       <div class="field"><label>Client Phone</label><input id="clientPhone" placeholder="555-0100" type="tel" oninput="render()"></div>
@@ -1145,7 +1145,6 @@ function saveSettings() {
   clientsCache = null;
   closeSettings();
   showToast('Settings saved!', 'success');
-  loadClientsCache();
 }
 
 // ============================================================
@@ -1633,8 +1632,7 @@ renderItems();
 render();
 updateSetupBanner();
 
-// Prefetch clients cache on load (sheet is always configured by the time we get here)
-loadClientsCache();
+// Clients cache is loaded on first focus of the Client Name field (requires user gesture for OAuth)
 </script>
 </body>
 </html>
