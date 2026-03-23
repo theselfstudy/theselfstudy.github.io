@@ -81,6 +81,14 @@
   }
   .gate-input:focus { border-color: var(--accent); }
 
+  .gate-hint {
+    font-size: .62rem;
+    color: var(--muted);
+    margin-top: -.9rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+  }
+
   .gate-btn {
     font-family: 'DM Mono', monospace;
     font-size: .78rem;
@@ -114,31 +122,68 @@
     margin-top: 2rem;
     line-height: 1.6;
   }
+
+  .step { display: none; }
+  .step.active { display: block; }
 </style>
 </head>
 <body>
 
 <div class="gate-card">
-  <div class="gate-title">Invoice Portal</div>
-  <div class="gate-subtitle">Restricted access</div>
 
-  <label class="gate-label" for="gatePassword">Password</label>
-  <input
-    class="gate-input"
-    id="gatePassword"
-    type="password"
-    placeholder="Enter your password"
-    autocomplete="current-password"
-    onkeydown="if(event.key==='Enter')checkPassword()"
-  >
+  <!-- Step 1: Password -->
+  <div class="step active" id="step1">
+    <div class="gate-title">Invoice Portal</div>
+    <div class="gate-subtitle">Restricted access</div>
 
-  <button class="gate-btn" onclick="checkPassword()">Continue</button>
+    <label class="gate-label" for="gatePassword">Password</label>
+    <input
+      class="gate-input"
+      id="gatePassword"
+      type="password"
+      placeholder="Enter your password"
+      autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')checkPassword()"
+    >
 
-  <div class="gate-error" id="gateError">Incorrect password. Please try again.</div>
+    <button class="gate-btn" onclick="checkPassword()">Continue</button>
 
-  <div class="gate-footer">
-    Access is restricted to authorised users only.
+    <div class="gate-error" id="gateError">Incorrect password. Please try again.</div>
+
+    <div class="gate-footer">
+      Access is restricted to authorised users only.
+    </div>
   </div>
+
+  <!-- Step 2: Google Sheet setup -->
+  <div class="step" id="step2">
+    <div class="gate-title">Connect Sheet</div>
+    <div class="gate-subtitle">One-time setup</div>
+
+    <label class="gate-label" for="sheetUrl">Google Sheet URL</label>
+    <input
+      class="gate-input"
+      id="sheetUrl"
+      type="url"
+      placeholder="https://docs.google.com/spreadsheets/d/..."
+      onkeydown="if(event.key==='Enter')saveSheet()"
+    >
+
+    <label class="gate-label" for="sheetTab">Sheet Tab Name</label>
+    <input
+      class="gate-input"
+      id="sheetTab"
+      type="text"
+      placeholder="Invoices"
+      onkeydown="if(event.key==='Enter')saveSheet()"
+    >
+    <p class="gate-hint">The tab where invoices will be saved. Defaults to "Invoices" if left blank.</p>
+
+    <button class="gate-btn" onclick="saveSheet()">Open Invoice Builder</button>
+
+    <div class="gate-error" id="sheetError"></div>
+  </div>
+
 </div>
 
 <script>
@@ -170,8 +215,7 @@ async function checkPassword() {
 
   if (!PASSWORD_HASH) {
     // No hash configured yet — developer mode, allow through
-    sessionStorage.setItem('inv_auth', '1');
-    window.location.replace(INVOICE_URL);
+    proceedAfterAuth();
     return;
   }
 
@@ -184,14 +228,51 @@ async function checkPassword() {
     .join('');
 
   if (hex === PASSWORD_HASH) {
-    sessionStorage.setItem('inv_auth', '1');
-    window.location.replace(INVOICE_URL);
+    proceedAfterAuth();
   } else {
     error.textContent = 'Incorrect password. Please try again.';
     error.classList.add('visible');
     document.getElementById('gatePassword').value = '';
     document.getElementById('gatePassword').focus();
   }
+}
+
+function proceedAfterAuth() {
+  sessionStorage.setItem('inv_auth', '1');
+
+  // If sheet already configured, go straight to builder
+  try {
+    const cfg = JSON.parse(localStorage.getItem('invoice_config') || '{}');
+    if (cfg.sheetUrl) {
+      window.location.replace(INVOICE_URL);
+      return;
+    }
+  } catch {}
+
+  // Otherwise show sheet setup step
+  document.getElementById('step1').classList.remove('active');
+  document.getElementById('step2').classList.add('active');
+  document.getElementById('sheetUrl').focus();
+}
+
+function saveSheet() {
+  const url = document.getElementById('sheetUrl').value.trim();
+  const tab = document.getElementById('sheetTab').value.trim() || 'Invoices';
+  const error = document.getElementById('sheetError');
+
+  if (!url) {
+    error.textContent = 'Please enter your Google Sheet URL.';
+    error.classList.add('visible');
+    return;
+  }
+  if (!url.includes('docs.google.com/spreadsheets')) {
+    error.textContent = "That doesn't look like a valid Google Sheet URL.";
+    error.classList.add('visible');
+    return;
+  }
+
+  localStorage.setItem('invoice_config', JSON.stringify({ sheetUrl: url, sheetTab: tab }));
+  window.location.replace(INVOICE_URL);
 }
 </script>
 </body>
