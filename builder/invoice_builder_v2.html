@@ -676,7 +676,7 @@
     @page { margin: 0; } /* removes browser-added date/title/URL headers and footers */
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { background: white; padding: 0; }
-    .form-panel, .preview-label, .btn-row, .app-header, .setup-banner, .modal-overlay, .toast { display: none !important; }
+    .form-panel, .preview-label, .btn-row, .sheet-status, .app-header, .setup-banner, .modal-overlay, .toast { display: none !important; }
     .app-layout { display: block; }
     .preview-panel { position: static; }
     .invoice-preview { border: none; box-shadow: none; padding: 1.5cm 2cm; }
@@ -1249,10 +1249,11 @@ async function fetchNextInvoiceNumber(token) {
     if (!res.ok) return null;
     const data = await res.json();
     const rows = (data.values || []).slice(1); // skip header
-    const nums = rows.map(r => parseInt((r[0] || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n) && n > 0);
-    if (!nums.length) return null;
-    const max = Math.max(...nums);
-    return { next: formatInvNum(max + 1), max };
+    const existing = rows.map(r => (r[0] || '').trim()).filter(Boolean);
+    if (!existing.length) return null;
+    const nums = existing.map(s => parseInt(s.replace(/\D/g, ''), 10)).filter(n => !isNaN(n) && n > 0);
+    const max = nums.length ? Math.max(...nums) : 0;
+    return { next: formatInvNum(max + 1), max, existing };
   } catch { return null; }
 }
 
@@ -1367,16 +1368,23 @@ async function handleExport() {
     const userNum = gv('invNum').trim();
     const sheetResult = await fetchNextInvoiceNumber(token);
     if (sheetResult) {
-      const userInt = parseInt((userNum || '').replace(/\D/g, ''), 10);
       if (!userNum) {
         // Field is empty — auto-fill with next number from sheet
         document.getElementById('invNum').value = sheetResult.next;
         render();
-      } else if (!isNaN(userInt) && userInt <= sheetResult.max) {
-        // User typed a number that already exists on the sheet — warn but don't block
-        showToast(`Warning: ${userNum} may already exist (last saved was ${formatInvNum(sheetResult.max)}). Proceeding with your number.`, 'error');
+      } else {
+        // Check for exact match against existing invoice numbers (case-insensitive)
+        const isDuplicate = sheetResult.existing.some(s => s.toLowerCase() === userNum.toLowerCase());
+        if (isDuplicate) {
+          showToast(`Warning: ${userNum} already exists on your sheet. Proceeding with your number.`, 'error');
+        } else {
+          // Fallback: numeric check for same-series numbers
+          const userInt = parseInt(userNum.replace(/\D/g, ''), 10);
+          if (!isNaN(userInt) && userInt <= sheetResult.max) {
+            showToast(`Warning: ${userNum} may already exist (last saved was ${formatInvNum(sheetResult.max)}). Proceeding with your number.`, 'error');
+          }
+        }
       }
-      // Otherwise user has a higher custom number — use it as-is
     }
     setSheetStatus('Saving invoice to sheet...', 'loading');
     await appendToSheet(token, buildSheetRow());
