@@ -860,6 +860,30 @@
   </div>
 </div>
 
+<!-- ══ BLANK INVOICE WARNING MODAL ══ -->
+<div class="modal-overlay" id="blankInvoiceModal" onclick="handleBlankInvoiceOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+    <div class="modal-title">Invoice Looks Empty</div>
+    <p class="modal-subtitle" style="margin-bottom:1.25rem">This invoice has no client info or line items filled in. Are you sure you want to submit it?</p>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button class="btn-modal-cancel" onclick="resolveBlankInvoice(false)">Go Back</button>
+      <button class="btn-modal-save" onclick="resolveBlankInvoice(true)">Submit Anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SAVE NEW CLIENT MODAL ══ -->
+<div class="modal-overlay" id="saveClientModal" onclick="handleSaveClientOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+    <div class="modal-title">New Client Detected</div>
+    <p class="modal-subtitle" id="saveClientMsg" style="margin-bottom:1.25rem"></p>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button class="btn-modal-cancel" onclick="resolveSaveClient(false)">Skip</button>
+      <button class="btn-modal-save" onclick="resolveSaveClient(true)">Save to Clients</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ POST-EXPORT MODAL ══ -->
 <div class="modal-overlay" id="postExportModal">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
@@ -1129,6 +1153,91 @@ function handleDupWarningOverlayClick(e) {
   if (e.target === document.getElementById('dupWarningModal')) resolveDupWarning(false);
 }
 
+// ── BLANK INVOICE MODAL ──
+let _resolveBlankInvoice = null;
+
+function showBlankInvoiceModal() {
+  document.getElementById('blankInvoiceModal').classList.add('open');
+  return new Promise(resolve => { _resolveBlankInvoice = resolve; });
+}
+
+function resolveBlankInvoice(confirmed) {
+  document.getElementById('blankInvoiceModal').classList.remove('open');
+  if (_resolveBlankInvoice) { _resolveBlankInvoice(confirmed); _resolveBlankInvoice = null; }
+}
+
+function handleBlankInvoiceOverlayClick(e) {
+  if (e.target === document.getElementById('blankInvoiceModal')) resolveBlankInvoice(false);
+}
+
+// ── SAVE NEW CLIENT MODAL ──
+let _resolveSaveClient = null;
+
+function showSaveClientModal(name) {
+  document.getElementById('saveClientMsg').textContent = `"${name}" isn't in your Clients tab yet. Would you like to save their details?`;
+  document.getElementById('saveClientModal').classList.add('open');
+  return new Promise(resolve => { _resolveSaveClient = resolve; });
+}
+
+function resolveSaveClient(confirmed) {
+  document.getElementById('saveClientModal').classList.remove('open');
+  if (_resolveSaveClient) { _resolveSaveClient(confirmed); _resolveSaveClient = null; }
+}
+
+function handleSaveClientOverlayClick(e) {
+  if (e.target === document.getElementById('saveClientModal')) resolveSaveClient(false);
+}
+
+async function maybySaveNewClient(token) {
+  const name = gv('clientName');
+  if (!name) return;
+
+  // Check cache; if not loaded yet, fetch names column directly using the existing token
+  let existingNames = [];
+  if (clientsCache !== null) {
+    existingNames = clientsCache.map(c => c.name.toLowerCase());
+  } else {
+    try {
+      const c = getConfig();
+      const spreadsheetId = getSpreadsheetId(c.sheetUrl);
+      if (!spreadsheetId) return;
+      const tab = encodeURIComponent('Clients');
+      const res = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A:A`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        existingNames = (data.values || []).slice(1)
+          .map(r => (r[0] || '').trim().toLowerCase())
+          .filter(Boolean);
+      }
+    } catch {}
+  }
+
+  if (existingNames.includes(name.toLowerCase())) return;
+
+  const confirmed = await showSaveClientModal(name);
+  if (!confirmed) return;
+
+  // Append new client row to Clients tab
+  const cfg = getConfig();
+  const spreadsheetId = getSpreadsheetId(cfg.sheetUrl);
+  if (!spreadsheetId) return;
+  const tab = encodeURIComponent('Clients');
+  try {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${tab}!A:D:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [[name, gv('clientPhone'), gv('clientEmail'), gv('clientAddress')]] }),
+      }
+    );
+    clientsCache = null; // bust cache so next autocomplete fetch picks up the new client
+  } catch {}
+}
+
 function newInvoice() {
   const next = getNextNumber();
   document.getElementById('invNum').value = formatInvNum(next);
@@ -1137,9 +1246,8 @@ function newInvoice() {
   document.getElementById('clientPhone').value = '';
   document.getElementById('clientAddress').value = '';
   const today = new Date().toISOString().split('T')[0];
-  const due = new Date(); due.setDate(due.getDate() + 30);
   document.getElementById('issueDate').value = today;
-  document.getElementById('dueDate').value = due.toISOString().split('T')[0];
+  document.getElementById('dueDate').value = '';
   document.getElementById('notes').value = '';
   document.getElementById('taxRate').value = '0';
   items = [{ desc: '', qty: 1, rate: '' }];
@@ -1377,9 +1485,10 @@ function buildSheetRow() {
 async function handleExport() {
   if (exportInProgress) return;
 
-  if (!gv('clientName') && !gv('invNum')) {
-    showToast('Add at least a client name or invoice number before exporting.', 'error');
-    return;
+  const isBlankInvoice = !gv('clientName') && items.every(it => !it.desc && !(parseFloat(it.rate) > 0));
+  if (isBlankInvoice) {
+    const proceed = await showBlankInvoiceModal();
+    if (!proceed) return;
   }
 
   if (!isConfigured()) {
@@ -1432,6 +1541,8 @@ async function handleExport() {
 
     const currentNum = parseInt((gv('invNum') || 'INV-1001').replace(/\D/g, ''), 10) || getNextNumber();
     commitNumber(currentNum);
+
+    await maybySaveNewClient(token);
 
     setSheetStatus('Saved to Google Sheets ✓', 'success');
     showToast('Saved! Opening print dialog...', 'success');
