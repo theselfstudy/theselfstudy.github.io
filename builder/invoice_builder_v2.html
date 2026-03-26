@@ -616,6 +616,34 @@
   }
   .modal-hint strong { color: var(--secondary); }
   .modal-actions { display: flex; gap: .65rem; margin-top: 1.5rem; justify-content: flex-end; }
+  .sheet-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: .82rem;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: .5rem .85rem;
+    width: 100%;
+    transition: background .15s, color .15s;
+  }
+  .sheet-link-btn:hover { background: var(--accent); color: #fff; }
+  .btn-change-url {
+    font-family: 'DM Mono', monospace;
+    font-size: .63rem;
+    letter-spacing: .08em;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-top: .4rem;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .btn-change-url:hover { color: var(--secondary); }
   .btn-modal-save {
     font-family: 'DM Mono', monospace;
     font-size: .73rem;
@@ -903,9 +931,14 @@
     <p class="modal-subtitle">Please connect your preferred Google Sheet to save the invoice information to a new row.</p>
 
     <div class="modal-section-label">Google Sheet</div>
-    <div class="modal-field">
+    <div class="modal-field" id="sheetUrlField">
       <label>Sheet URL</label>
       <input id="settingSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." type="url">
+    </div>
+    <div class="modal-field" id="sheetUrlDisplay" style="display:none">
+      <label>Sheet URL</label>
+      <a id="settingSheetLink" href="#" target="_blank" rel="noopener" class="sheet-link-btn">Open Google Sheet ↗</a>
+      <button class="btn-change-url" onclick="showSheetUrlInput()">Change URL</button>
     </div>
     <div class="modal-field">
       <label>Sheet Tab Name (default: Invoices)</label>
@@ -1263,9 +1296,24 @@ function newInvoice() {
 
 function openSettings() {
   const c = getConfig();
-  document.getElementById('settingSheetUrl').value = c.sheetUrl || '';
+  const url = c.sheetUrl || '';
+  document.getElementById('settingSheetUrl').value = url;
   document.getElementById('settingSheetTab').value = c.sheetTab || '';
+  if (url) {
+    document.getElementById('settingSheetLink').href = url;
+    document.getElementById('sheetUrlField').style.display = 'none';
+    document.getElementById('sheetUrlDisplay').style.display = 'block';
+  } else {
+    document.getElementById('sheetUrlField').style.display = 'block';
+    document.getElementById('sheetUrlDisplay').style.display = 'none';
+  }
   document.getElementById('settingsModal').classList.add('open');
+}
+
+function showSheetUrlInput() {
+  document.getElementById('sheetUrlField').style.display = 'block';
+  document.getElementById('sheetUrlDisplay').style.display = 'none';
+  document.getElementById('settingSheetUrl').focus();
 }
 
 function closeSettings() {
@@ -1819,8 +1867,7 @@ waitForGIS();
 // Default dates
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('issueDate').value = today;
-const due = new Date(); due.setDate(due.getDate() + 30);
-document.getElementById('dueDate').value = due.toISOString().split('T')[0];
+document.getElementById('dueDate').value = '';
 
 // Auto-fill invoice number
 document.getElementById('invNum').value = formatInvNum(getNextNumber());
