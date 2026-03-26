@@ -429,7 +429,7 @@
   }
   .inv-qr-img {
     width: 100%;
-    max-width: 100px;
+    max-width: 150px;
     aspect-ratio: 1;
     object-fit: contain;
     border-radius: 3px;
@@ -765,7 +765,12 @@
       </div>
       <div class="field"><label>Client Phone</label><input id="clientPhone" placeholder="555-0100" type="tel" oninput="render()"></div>
       <div class="field"><label>Client Email</label><input id="clientEmail" placeholder="jane@client.com" type="email" oninput="render()"></div>
-      <div class="field"><label>Client Address</label><textarea id="clientAddress" rows="2" placeholder="456 Oak Ave, City, State ZIP" oninput="render()"></textarea></div>
+      <div class="field"><label>Street Address</label><input id="clientStreet" placeholder="456 Oak Ave" oninput="render()"></div>
+      <div class="field-row">
+        <div class="field"><label>City</label><input id="clientCity" placeholder="City" oninput="render()"></div>
+        <div class="field" style="max-width:80px"><label>State</label><input id="clientState" placeholder="CA" oninput="render()"></div>
+        <div class="field" style="max-width:100px"><label>ZIP</label><input id="clientZip" placeholder="90210" oninput="render()"></div>
+      </div>
     </div>
 
     <!-- Invoice Details -->
@@ -961,10 +966,10 @@
 // ============================================================
 
 const OWNER = {
-  name:    'Your Business Name',       // e.g. 'The Self Study'
-  email:   'hello@the-self-study.com',
-  phone:   '+1 555 000 0000',
-  address: '123 Main St\nCity, State ZIP',
+  name:    'A Potters Wheel Counseling',       // e.g. 'The Self Study'
+  email:   'apotterswheel7@gmail.com',
+  phone:   '+1 412 447 1120',
+  address: '11524 Frankstown Road\nPittsburgh, PA 15235',
 };
 
 // For each payment method:
@@ -973,7 +978,7 @@ const OWNER = {
 //            Leave as '' to show a placeholder until you have the file.
 //   handle — username or address shown under the QR code
 const PAYMENT_METHODS = [
-  { label: 'CashApp',  image: '', handle: '$yourcashtag'  },
+  { label: 'CashApp',  image: 'cashapp_placeholder.png', handle: '$yourcashtag'  },
   { label: 'Zelle',    image: 'zelle_colored.png', handle: 'hello@the-self-study.com' },
 ];
 
@@ -1125,7 +1130,10 @@ function selectClient(i) {
   document.getElementById('clientName').value = client.name;
   document.getElementById('clientPhone').value = client.phone;
   document.getElementById('clientEmail').value = client.email;
-  document.getElementById('clientAddress').value = client.address;
+  document.getElementById('clientStreet').value = client.address;
+  document.getElementById('clientCity').value = '';
+  document.getElementById('clientState').value = '';
+  document.getElementById('clientZip').value = '';
   box.style.display = 'none';
   render();
 }
@@ -1221,7 +1229,7 @@ function handleSaveClientOverlayClick(e) {
   if (e.target === document.getElementById('saveClientModal')) resolveSaveClient(false);
 }
 
-async function maybySaveNewClient(token) {
+async function maybeSaveNewClient(token) {
   const name = gv('clientName');
   if (!name) return;
 
@@ -1264,7 +1272,7 @@ async function maybySaveNewClient(token) {
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: [[name, gv('clientPhone'), gv('clientEmail'), gv('clientAddress')]] }),
+        body: JSON.stringify({ values: [[name, gv('clientPhone'), gv('clientEmail'), getClientAddress()]] }),
       }
     );
     clientsCache = null; // bust cache so next autocomplete fetch picks up the new client
@@ -1277,7 +1285,10 @@ function newInvoice() {
   document.getElementById('clientName').value = '';
   document.getElementById('clientEmail').value = '';
   document.getElementById('clientPhone').value = '';
-  document.getElementById('clientAddress').value = '';
+  document.getElementById('clientStreet').value = '';
+  document.getElementById('clientCity').value = '';
+  document.getElementById('clientState').value = '';
+  document.getElementById('clientZip').value = '';
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('issueDate').value = today;
   document.getElementById('dueDate').value = '';
@@ -1514,7 +1525,7 @@ function buildSheetRow() {
     gv('clientName'),
     gv('clientEmail'),
     gv('clientPhone'),
-    gv('clientAddress'),
+    getClientAddress(),
     sym,
     lineItemsStr,
     subtotal.toFixed(2),
@@ -1590,7 +1601,7 @@ async function handleExport() {
     const currentNum = parseInt((gv('invNum') || 'INV-1001').replace(/\D/g, ''), 10) || getNextNumber();
     commitNumber(currentNum);
 
-    await maybySaveNewClient(token);
+    await maybeSaveNewClient(token);
 
     setSheetStatus('Saved to Google Sheets ✓', 'success');
     showToast('Saved! Opening print dialog...', 'success');
@@ -1674,6 +1685,15 @@ function gv(id) {
   return el ? el.value.trim() : '';
 }
 
+function getClientAddress() {
+  const street = gv('clientStreet');
+  const city   = gv('clientCity');
+  const state  = gv('clientState');
+  const zip    = gv('clientZip');
+  const line2  = [city, state && zip ? `${state} ${zip}` : (state || zip)].filter(Boolean).join(', ');
+  return [street, line2].filter(Boolean).join('\n');
+}
+
 // ============================================================
 //  RENDER STATIC OWNER INFO (form side)
 // ============================================================
@@ -1732,7 +1752,7 @@ function render() {
   const clientName   = gv('clientName')   || 'Client Name';
   const clientEmail  = gv('clientEmail');
   const clientPhone  = gv('clientPhone');
-  const clientAddr   = gv('clientAddress');
+  const clientAddr   = getClientAddress();
   const clientDetail = [clientPhone, clientEmail, clientAddr].filter(Boolean).join('\n');
 
   const invNum    = gv('invNum') || formatInvNum(getNextNumber());
